@@ -1,27 +1,26 @@
 package server
 
 import (
-	"github.com/overgoy/url-shortener/internal/handlers"
-	"log"
+	"fmt"
+	"github.com/go-chi/chi/v5"
+	"github.com/overgoy/url-shortener/internal/controller"
+	log "github.com/sirupsen/logrus"
 	"net/http"
+	"os"
 )
 
 func Start() {
-	http.HandleFunc("/", handlers.HandleRequest)
-	log.Fatal(http.ListenAndServe(":8080", nil))
-}
+	logger := log.New()
+	logger.SetOutput(os.Stdout)
+	logger.SetLevel(log.InfoLevel)
 
-//log := logrus.New()
-//log.SetOutput(os.Stdout)
-//log.SetLevel(logrus.InfoLevel)
-//
-////controller = controller.NewBaseController(*log)
-//r := chi.NewRouter()
-////r.Mount("/", controller.Route())
-//
-//log.Info("Server started")
-//err := http.ListenAndServe(":8080", r)
-//
-//if err != nil {
-//	fmt.Printf("server: #{err}")
-//}
+	baseController := controller.NewBaseController(logger)
+	r := chi.NewRouter()
+	r.Mount("/", baseController.Route())
+
+	logger.Info("Server started on :8080")
+	err := http.ListenAndServe(":8080", r)
+	if err != nil {
+		fmt.Printf("server: %v", err)
+	}
+}
