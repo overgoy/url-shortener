@@ -5,6 +5,7 @@ import (
 	"io"
 	"math/rand"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -44,8 +45,9 @@ func handlePost(w http.ResponseWriter, r *http.Request) {
 
 	longURL, err := io.ReadAll(r.Body)
 	defer r.Body.Close()
-	if err != nil {
-		http.Error(w, "Error reading request", http.StatusBadRequest)
+	if err != nil || len(strings.TrimSpace(string(longURL))) == 0 {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Error reading request"))
 		return
 	}
 
