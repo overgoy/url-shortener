@@ -1,43 +1,16 @@
-package app
+package handlers
 
 import (
 	"fmt"
+	"github.com/overgoy/url-shortener/internal/util"
 	"io"
-	"math/rand"
 	"net/http"
 	"strings"
-	"time"
 )
 
-const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-
-var seededRand *rand.Rand = rand.New(rand.NewSource(time.Now().UnixNano()))
 var urlStore = make(map[string]string)
 
-func stringWithCharset(length int, charset string) string {
-	b := make([]byte, length)
-	for i := range b {
-		b[i] = charset[seededRand.Intn(len(charset))]
-	}
-	return string(b)
-}
-
-func generateID() string {
-	return stringWithCharset(8, charset)
-}
-
-func HandleRequest(w http.ResponseWriter, r *http.Request) {
-	switch r.Method {
-	case "POST":
-		handlePost(w, r)
-	case "GET":
-		handleGet(w, r)
-	default:
-		http.Error(w, "Not supported", http.StatusMethodNotAllowed)
-	}
-}
-
-func handlePost(w http.ResponseWriter, r *http.Request) {
+func HandlePost(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path != "/" {
 		http.Error(w, "Invalid path", http.StatusBadRequest)
 		return
@@ -51,7 +24,7 @@ func handlePost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	id := generateID()
+	id := util.GenerateID()
 	urlStore[id] = string(longURL)
 
 	shortURL := fmt.Sprintf("http://localhost:8080/%s", id)
@@ -60,7 +33,7 @@ func handlePost(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(shortURL))
 }
 
-func handleGet(w http.ResponseWriter, r *http.Request) {
+func HandleGet(w http.ResponseWriter, r *http.Request) {
 	id := r.URL.Path[1:]
 	longURL, ok := urlStore[id]
 

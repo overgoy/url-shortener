@@ -1,4 +1,4 @@
-package app
+package handlers
 
 import (
 	"bytes"
@@ -32,7 +32,7 @@ func TestHandlePost(t *testing.T) {
 
 			rec := httptest.NewRecorder()
 
-			HandleRequest(rec, req)
+			HandlePost(rec, req)
 
 			res := rec.Result()
 			defer res.Body.Close()
@@ -69,7 +69,7 @@ func TestHandleGet(t *testing.T) {
 
 			rec := httptest.NewRecorder()
 
-			HandleRequest(rec, req)
+			HandleGet(rec, req)
 
 			res := rec.Result()
 			defer res.Body.Close()
