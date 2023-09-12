@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"bytes"
+	"github.com/overgoy/url-shortener/internal/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"net/http"
@@ -44,6 +45,10 @@ func TestHandlePost(t *testing.T) {
 }
 
 func TestHandleGet(t *testing.T) {
+	cfg := &config.Configuration{
+		ServerAddress: "localhost:8080",
+		BaseURL:       "http://localhost:8080/",
+	}
 	// Добавляем тестовую ссылку в хранилище
 	testID := "testID"
 	urlStore[testID] = "https://practicum.yandex.ru/"
@@ -69,7 +74,7 @@ func TestHandleGet(t *testing.T) {
 
 			rec := httptest.NewRecorder()
 
-			HandleGet(rec, req)
+			HandleGet(rec, req, cfg)
 
 			res := rec.Result()
 			defer res.Body.Close()

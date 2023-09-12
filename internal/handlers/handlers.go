@@ -34,10 +34,16 @@ func HandlePost(w http.ResponseWriter, r *http.Request, cfg *config.Configuratio
 	w.Write([]byte(shortURL))
 }
 
-func HandleGet(w http.ResponseWriter, r *http.Request) {
-	id := r.URL.Path[1:]
-	longURL, ok := urlStore[id]
+func HandleGet(w http.ResponseWriter, r *http.Request, cfg *config.Configuration) {
+	expectedShortURL := strings.TrimPrefix(cfg.BaseURL, "http://"+cfg.ServerAddress+"/")
+	requestedShortURL := r.URL.Path[1:]
 
+	if requestedShortURL != expectedShortURL {
+		http.Error(w, "Invalid short URL", http.StatusBadRequest)
+		return
+	}
+
+	longURL, ok := urlStore[requestedShortURL]
 	if !ok {
 		http.Error(w, "Not found", http.StatusNotFound)
 		return

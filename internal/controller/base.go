@@ -33,5 +33,5 @@ func (c *BaseController) handleMain(writer http.ResponseWriter, request *http.Re
 }
 
 func (c *BaseController) handleName(writer http.ResponseWriter, request *http.Request) {
-	handlers.HandleGet(writer, request)
+	handlers.HandleGet(writer, request, c.cfg)
 }
