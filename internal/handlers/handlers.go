@@ -6,10 +6,17 @@ import (
 	"github.com/overgoy/url-shortener/internal/util"
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
 )
 
 var urlStore = make(map[string]string)
+
+// Проверяет, является ли URL валидным.
+func isValidURL(u string) bool {
+	parsedURL, err := url.Parse(u)
+	return err == nil && parsedURL.Scheme != "" && parsedURL.Host != ""
+}
 
 func HandlePost(w http.ResponseWriter, r *http.Request, cfg *config.Configuration) {
 	if r.URL.Path != "/" {
@@ -22,6 +29,13 @@ func HandlePost(w http.ResponseWriter, r *http.Request, cfg *config.Configuratio
 	if err != nil || len(strings.TrimSpace(string(longURL))) == 0 {
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte("Error reading request"))
+		return
+	}
+
+	// Проверка валидности URL
+	if !isValidURL(string(longURL)) {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Invalid URL format"))
 		return
 	}
 
