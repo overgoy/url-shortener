@@ -2,9 +2,10 @@ package main
 
 import (
 	"github.com/overgoy/url-shortener/cmd/server"
+	"github.com/overgoy/url-shortener/internal/config"
 )
 
 func main() {
-	server.Start()
-
+	cfg := config.New()
+	server.Start(cfg)
 }

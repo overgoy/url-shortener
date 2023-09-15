@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"fmt"
+	"github.com/overgoy/url-shortener/internal/config"
 	"github.com/overgoy/url-shortener/internal/util"
 	"io"
 	"net/http"
@@ -10,7 +11,7 @@ import (
 
 var urlStore = make(map[string]string)
 
-func HandlePost(w http.ResponseWriter, r *http.Request) {
+func HandlePost(w http.ResponseWriter, r *http.Request, cfg *config.Configuration) {
 	if r.URL.Path != "/" {
 		http.Error(w, "Invalid path", http.StatusBadRequest)
 		return
@@ -27,7 +28,7 @@ func HandlePost(w http.ResponseWriter, r *http.Request) {
 	id := util.GenerateID()
 	urlStore[id] = string(longURL)
 
-	shortURL := fmt.Sprintf("http://localhost:8080/%s", id)
+	shortURL := fmt.Sprintf("%s%s", cfg.BaseURL, id)
 	w.Header().Set("Content-Type", "text/plain")
 	w.WriteHeader(http.StatusCreated)
 	w.Write([]byte(shortURL))
