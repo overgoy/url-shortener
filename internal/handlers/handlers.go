@@ -35,15 +35,10 @@ func HandlePost(w http.ResponseWriter, r *http.Request, cfg *config.Configuratio
 }
 
 func HandleGet(w http.ResponseWriter, r *http.Request, cfg *config.Configuration) {
-	expectedShortURL := strings.TrimPrefix(cfg.BaseURL, "http://"+cfg.ServerAddress+"/")
-	requestedShortURL := r.URL.Path[1:]
+	id := r.URL.Path[1:]
 
-	if requestedShortURL != expectedShortURL {
-		http.Error(w, "Invalid short URL", http.StatusBadRequest)
-		return
-	}
-
-	longURL, ok := urlStore[requestedShortURL]
+	// Проверьте наличие длинного URL по идентификатору в хранилище
+	longURL, ok := urlStore[id]
 	if !ok {
 		http.Error(w, "Not found", http.StatusNotFound)
 		return
