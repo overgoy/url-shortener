@@ -49,7 +49,12 @@ func HandlePost(w http.ResponseWriter, r *http.Request, cfg *config.Configuratio
 }
 
 func HandleGet(w http.ResponseWriter, r *http.Request, cfg *config.Configuration) {
-	id := strings.TrimLeft(r.URL.Path, "/")
+	u, err := url.Parse(r.URL.Path)
+	if err != nil {
+		fmt.Println("Error:", err)
+		return
+	}
+	id := strings.TrimLeft(u.Path, "/")
 
 	// Проверьте наличие длинного URL по идентификатору в хранилище
 	longURL, ok := urlStore[id]
