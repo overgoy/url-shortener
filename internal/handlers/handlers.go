@@ -42,14 +42,14 @@ func HandlePost(w http.ResponseWriter, r *http.Request, cfg *config.Configuratio
 	id := util.GenerateID()
 	urlStore[id] = string(longURL)
 
-	shortURL := fmt.Sprintf("%s%s", cfg.BaseURL, id)
+	shortURL := fmt.Sprintf("%s/%s", cfg.BaseURL, id)
 	w.Header().Set("Content-Type", "text/plain")
 	w.WriteHeader(http.StatusCreated)
 	w.Write([]byte(shortURL))
 }
 
 func HandleGet(w http.ResponseWriter, r *http.Request, cfg *config.Configuration) {
-	id := r.URL.Path[1:]
+	id := strings.TrimLeft(r.URL.Path, "/")
 
 	// Проверьте наличие длинного URL по идентификатору в хранилище
 	longURL, ok := urlStore[id]
