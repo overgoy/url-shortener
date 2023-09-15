@@ -42,7 +42,7 @@ func HandlePost(w http.ResponseWriter, r *http.Request, cfg *config.Configuratio
 	id := util.GenerateID()
 	urlStore[id] = string(longURL)
 
-	shortURL := fmt.Sprintf("%s%s", cfg.BaseURL, id)
+	shortURL := fmt.Sprintf("%s/%s", cfg.BaseURL, id)
 	w.Header().Set("Content-Type", "text/plain")
 	w.WriteHeader(http.StatusCreated)
 	w.Write([]byte(shortURL))
