@@ -11,9 +11,15 @@ import (
 )
 
 func TestHandlePost(t *testing.T) {
+	cfg := &config.Configuration{
+		ServerAddress: "localhost:8888",
+		BaseURL:       "http://localhost:8000/",
+	}
+
 	type want struct {
-		code        int
-		contentType string
+		code         int
+		contentType  string
+		bodyContains string
 	}
 
 	tests := []struct {
@@ -21,8 +27,8 @@ func TestHandlePost(t *testing.T) {
 		inputURL string
 		want     want
 	}{
-		{"valid URL", "https://practicum.yandex.ru/", want{http.StatusCreated, "text/plain"}},
-		{"empty URL", "", want{http.StatusBadRequest, ""}},
+		{"valid URL", "https://practicum.yandex.ru/", want{http.StatusCreated, "text/plain", cfg.BaseURL}}, // Теперь мы проверяем, что короткий URL начинается с BaseURL
+		{"empty URL", "", want{http.StatusBadRequest, "", ""}},
 	}
 
 	for _, tt := range tests {
@@ -33,7 +39,7 @@ func TestHandlePost(t *testing.T) {
 
 			rec := httptest.NewRecorder()
 
-			HandlePost(rec, req)
+			HandlePost(rec, req, cfg)
 
 			res := rec.Result()
 			defer res.Body.Close()
