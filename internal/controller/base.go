@@ -5,19 +5,21 @@ import (
 	"github.com/overgoy/url-shortener/internal/config"
 	"net/http"
 
-	"github.com/overgoy/url-shortener/internal/handlers"
+	"github.com/overgoy/url-shortener/internal/handler"
 	log "github.com/sirupsen/logrus"
 )
 
 type BaseController struct {
-	logger *log.Logger
-	cfg    *config.Configuration
+	logger     *log.Logger
+	cfg        *config.Configuration
+	urlHandler *handler.URLHandler // Добавляем экземпляр обработчика URL
 }
 
 func NewBaseController(logger *log.Logger, cfg *config.Configuration) *BaseController {
 	return &BaseController{
-		logger: logger,
-		cfg:    cfg,
+		logger:     logger,
+		cfg:        cfg,
+		urlHandler: handler.NewURLHandler(cfg), // Инициализируем обработчик с конфигурацией
 	}
 }
 
@@ -29,9 +31,9 @@ func (c *BaseController) Route() *chi.Mux {
 }
 
 func (c *BaseController) handleMain(writer http.ResponseWriter, request *http.Request) {
-	handlers.HandlePost(writer, request, c.cfg)
+	c.urlHandler.HandlePost(writer, request) // Обращаемся к обработчику напрямую
 }
 
 func (c *BaseController) handleName(writer http.ResponseWriter, request *http.Request) {
-	handlers.HandleGet(writer, request, c.cfg)
+	c.urlHandler.HandleGet(writer, request) // Обращаемся к обработчику напрямую
 }
