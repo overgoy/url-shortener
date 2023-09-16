@@ -3,6 +3,7 @@ package handler
 import (
 	"bytes"
 	"github.com/overgoy/url-shortener/internal/config"
+	logger "github.com/overgoy/url-shortener/internal/logging"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"net/http"
@@ -15,7 +16,8 @@ func TestHandlePost(t *testing.T) {
 		ServerAddress: "localhost:8888",
 		BaseURL:       "http://localhost:8000/",
 	}
-	h := NewURLHandler(cfg)
+	logAdapter := logger.NewLogrusAdapter()
+	h := NewURLHandler(cfg, logAdapter)
 
 	type want struct {
 		code         int
@@ -56,7 +58,8 @@ func TestHandleGet(t *testing.T) {
 		ServerAddress: "localhost:8080",
 		BaseURL:       "http://localhost:8080/",
 	}
-	h := NewURLHandler(cfg)
+	logAdapter := logger.NewLogrusAdapter()
+	h := NewURLHandler(cfg, logAdapter)
 
 	// Добавляем тестовую ссылку в хранилище
 	testID := "testID"

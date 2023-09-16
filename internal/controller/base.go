@@ -19,7 +19,7 @@ func NewBaseController(logger logger.Logger, cfg *config.Configuration) *BaseCon
 	return &BaseController{
 		logger:     logger,
 		cfg:        cfg,
-		urlHandler: handler.NewURLHandler(cfg), // Инициализируем обработчик с конфигурацией
+		urlHandler: handler.NewURLHandler(cfg, logger), // Инициализируем обработчик с конфигурацией
 	}
 }
 

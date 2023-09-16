@@ -5,13 +5,14 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/overgoy/url-shortener/internal/config"
 	"github.com/overgoy/url-shortener/internal/controller"
+	logger "github.com/overgoy/url-shortener/internal/logging"
 	log "github.com/sirupsen/logrus"
 	"net/http"
 	"os"
 )
 
 func Start(cfg *config.Configuration) {
-	logger := log.New()
+	logger := logger.NewLogrusAdapter()
 	logger.SetOutput(os.Stdout)
 	logger.SetLevel(log.InfoLevel)
 

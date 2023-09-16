@@ -3,7 +3,6 @@ package config
 import (
 	"flag"
 	"github.com/caarlos0/env/v6"
-	logger "github.com/overgoy/url-shortener/internal/logging"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -12,7 +11,7 @@ type Configuration struct {
 	BaseURL       string `env:"BASE_URL"`
 }
 
-func New(logger logger.Logger) *Configuration {
+func New() *Configuration {
 	config := &Configuration{}
 
 	// Значения по умолчанию
@@ -30,7 +29,7 @@ func New(logger logger.Logger) *Configuration {
 	flag.Parse()
 
 	if err := env.Parse(config); err != nil {
-		logger.WithError(err).Error("Ошибка при разборе переменных окружения")
+		log.WithError(err).Error("Ошибка при разборе переменных окружения")
 	}
 
 	// Если переменные окружения не установлены, используем значения из флагов
