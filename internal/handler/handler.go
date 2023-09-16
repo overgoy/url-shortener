@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"errors"
 	"fmt"
 	"github.com/overgoy/url-shortener/internal/config"
 	"github.com/overgoy/url-shortener/internal/util"
@@ -31,21 +30,23 @@ func (h *URLHandler) HandlePost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	longURL, err := readRequestBody(r.Body)
+	longURL, err := io.ReadAll(r.Body)
 	defer r.Body.Close()
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+	if err != nil || len(strings.TrimSpace(string(longURL))) == 0 {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Error reading request"))
 		return
 	}
 
-	if !isValidURL(longURL) {
-		http.Error(w, "Invalid URL format", http.StatusBadRequest)
+	if !isValidURL(string(longURL)) {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Invalid URL format"))
 		return
 	}
 
 	id := util.GenerateID()
 	h.Mux.Lock()
-	h.Store[id] = longURL
+	h.Store[id] = string(longURL)
 	h.Mux.Unlock()
 
 	baseURL := h.Config.BaseURL
@@ -73,20 +74,6 @@ func (h *URLHandler) HandleGet(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Location", longURL)
 	w.WriteHeader(http.StatusTemporaryRedirect)
-}
-
-func readRequestBody(body io.ReadCloser) (string, error) {
-	content, err := io.ReadAll(body)
-	if err != nil {
-		return "", errors.New("Error reading request")
-	}
-
-	contentStr := strings.TrimSpace(string(content))
-	if len(contentStr) == 0 {
-		return "", errors.New("Request body is empty")
-	}
-
-	return contentStr, nil
 }
 
 func isValidURL(u string) bool {

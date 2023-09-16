@@ -15,6 +15,7 @@ func TestHandlePost(t *testing.T) {
 		ServerAddress: "localhost:8888",
 		BaseURL:       "http://localhost:8000/",
 	}
+	h := NewURLHandler(cfg)
 
 	type want struct {
 		code         int
@@ -39,7 +40,7 @@ func TestHandlePost(t *testing.T) {
 
 			rec := httptest.NewRecorder()
 
-			HandlePost(rec, req, cfg)
+			h.HandlePost(rec, req)
 
 			res := rec.Result()
 			defer res.Body.Close()
@@ -55,9 +56,11 @@ func TestHandleGet(t *testing.T) {
 		ServerAddress: "localhost:8080",
 		BaseURL:       "http://localhost:8080/",
 	}
+	h := NewURLHandler(cfg)
+
 	// Добавляем тестовую ссылку в хранилище
 	testID := "testID"
-	urlStore[testID] = "https://practicum.yandex.ru/"
+	h.Store[testID] = "https://practicum.yandex.ru/"
 
 	type want struct {
 		code     int
@@ -80,7 +83,7 @@ func TestHandleGet(t *testing.T) {
 
 			rec := httptest.NewRecorder()
 
-			HandleGet(rec, req, cfg)
+			h.HandleGet(rec, req)
 
 			res := rec.Result()
 			defer res.Body.Close()
