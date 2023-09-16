@@ -50,9 +50,7 @@ func (h *URLHandler) HandlePost(w http.ResponseWriter, r *http.Request) {
 	h.Mux.Unlock()
 
 	baseURL := h.Config.BaseURL
-	if strings.HasSuffix(baseURL, "/") {
-		baseURL = strings.TrimSuffix(baseURL, "/")
-	}
+	baseURL = strings.TrimSuffix(baseURL, "/")
 
 	shortURL := fmt.Sprintf("%s/%s", baseURL, id)
 	w.Header().Set("Content-Type", "text/plain")
