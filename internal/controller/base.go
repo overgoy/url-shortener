@@ -12,14 +12,14 @@ import (
 type BaseController struct {
 	logger     logger.Logger
 	cfg        *config.Configuration
-	urlHandler *handler.URLHandler // Добавляем экземпляр обработчика URL
+	urlHandler *handler.App // Добавляем экземпляр обработчика URL
 }
 
 func NewBaseController(logger logger.Logger, cfg *config.Configuration) *BaseController {
 	return &BaseController{
 		logger:     logger,
 		cfg:        cfg,
-		urlHandler: handler.NewURLHandler(cfg, logger), // Инициализируем обработчик с конфигурацией
+		urlHandler: handler.NewApp(cfg, logger), // Инициализируем обработчик с конфигурацией
 	}
 }
 

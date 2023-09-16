@@ -12,22 +12,22 @@ import (
 	"sync"
 )
 
-type URLHandler struct {
-	Store  map[string]string
-	Mux    sync.Mutex
-	Config *config.Configuration
-	Logger logger.Logger
+type App struct {
+	URLStore map[string]string
+	Mux      sync.Mutex
+	Config   *config.Configuration
+	Logger   logger.Logger
 }
 
-func NewURLHandler(cfg *config.Configuration, logger logger.Logger) *URLHandler {
-	return &URLHandler{
-		Store:  make(map[string]string),
-		Config: cfg,
-		Logger: logger,
+func NewApp(cfg *config.Configuration, logger logger.Logger) *App {
+	return &App{
+		URLStore: make(map[string]string),
+		Config:   cfg,
+		Logger:   logger,
 	}
 }
 
-func (h *URLHandler) HandlePost(w http.ResponseWriter, r *http.Request) {
+func (h *App) HandlePost(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path != "/" {
 		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 		return
@@ -51,7 +51,7 @@ func (h *URLHandler) HandlePost(w http.ResponseWriter, r *http.Request) {
 
 	id := util.GenerateID()
 	h.Mux.Lock()
-	h.Store[id] = string(longURL)
+	h.URLStore[id] = string(longURL)
 	h.Mux.Unlock()
 
 	baseURL := h.Config.BaseURL
@@ -63,11 +63,16 @@ func (h *URLHandler) HandlePost(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(shortURL))
 }
 
-func (h *URLHandler) HandleGet(w http.ResponseWriter, r *http.Request) {
+func (h *App) HandleGet(w http.ResponseWriter, r *http.Request) {
+	if len(r.URL.Path) < 2 {
+		http.Error(w, "Invalid request", http.StatusBadRequest)
+		return
+	}
+
 	id := r.URL.Path[1:]
 
 	h.Mux.Lock()
-	longURL, ok := h.Store[id]
+	longURL, ok := h.URLStore[id]
 	h.Mux.Unlock()
 
 	if !ok {

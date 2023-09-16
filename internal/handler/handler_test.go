@@ -17,7 +17,7 @@ func TestHandlePost(t *testing.T) {
 		BaseURL:       "http://localhost:8000/",
 	}
 	logAdapter := logger.NewLogrusAdapter()
-	h := NewURLHandler(cfg, logAdapter)
+	h := NewApp(cfg, logAdapter)
 
 	type want struct {
 		code         int
@@ -59,11 +59,11 @@ func TestHandleGet(t *testing.T) {
 		BaseURL:       "http://localhost:8080/",
 	}
 	logAdapter := logger.NewLogrusAdapter()
-	h := NewURLHandler(cfg, logAdapter)
+	h := NewApp(cfg, logAdapter)
 
 	// Добавляем тестовую ссылку в хранилище
 	testID := "testID"
-	h.Store[testID] = "https://practicum.yandex.ru/"
+	h.URLStore[testID] = "https://practicum.yandex.ru/"
 
 	type want struct {
 		code     int
