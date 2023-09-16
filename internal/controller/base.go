@@ -3,19 +3,19 @@ package controller
 import (
 	"github.com/go-chi/chi/v5"
 	"github.com/overgoy/url-shortener/internal/config"
+	logger "github.com/overgoy/url-shortener/internal/logging"
 	"net/http"
 
 	"github.com/overgoy/url-shortener/internal/handler"
-	log "github.com/sirupsen/logrus"
 )
 
 type BaseController struct {
-	logger     *log.Logger
+	logger     logger.Logger
 	cfg        *config.Configuration
 	urlHandler *handler.URLHandler // Добавляем экземпляр обработчика URL
 }
 
-func NewBaseController(logger *log.Logger, cfg *config.Configuration) *BaseController {
+func NewBaseController(logger logger.Logger, cfg *config.Configuration) *BaseController {
 	return &BaseController{
 		logger:     logger,
 		cfg:        cfg,
