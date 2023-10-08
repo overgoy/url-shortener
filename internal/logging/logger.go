@@ -1,53 +1,28 @@
 package logger
 
 import (
+	"net/http"
+	"time"
+
 	log "github.com/sirupsen/logrus"
-	"io"
 )
 
-type Logger interface {
-	Info(args ...interface{})
-	Error(args ...interface{})
-	WithError(err error) Logger
-	WithField(key string, value interface{}) Logger
-	SetOutput(output io.Writer)
-	SetLevel(level log.Level)
-}
+// Logger is a middleware for logging requests.
+func Logger(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Запуск таймера для измерения времени выполнения запроса
+		startTime := time.Now()
 
-type LogrusAdapter struct {
-	logger *log.Logger
-}
+		// Выполнение следующего обработчика
+		next.ServeHTTP(w, r)
 
-func NewLogrusAdapter() Logger {
-	return &LogrusAdapter{
-		logger: log.StandardLogger(),
-	}
-}
-
-func (l *LogrusAdapter) Info(args ...interface{}) {
-	l.logger.Info(args...)
-}
-
-func (l *LogrusAdapter) Error(args ...interface{}) {
-	l.logger.Error(args...)
-}
-
-func (l *LogrusAdapter) WithError(err error) Logger {
-	return &LogrusAdapter{
-		logger: l.logger.WithError(err).Logger,
-	}
-}
-
-func (l *LogrusAdapter) WithField(key string, value interface{}) Logger {
-	return &LogrusAdapter{
-		logger: l.logger.WithField(key, value).Logger,
-	}
-}
-
-func (l *LogrusAdapter) SetOutput(output io.Writer) {
-	l.logger.SetOutput(output)
-}
-
-func (l *LogrusAdapter) SetLevel(level log.Level) {
-	l.logger.SetLevel(level)
+		// Запись информации о запросе
+		log.WithFields(log.Fields{
+			"method": r.Method,
+			"url":    r.URL.String(),
+			"addr":   r.RemoteAddr,
+			"proto":  r.Proto,
+			"time":   time.Since(startTime),
+		}).Info("Received a request")
+	})
 }

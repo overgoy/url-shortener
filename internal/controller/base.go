@@ -1,39 +1,47 @@
 package controller
 
 import (
-	"github.com/go-chi/chi/v5"
-	"github.com/overgoy/url-shortener/internal/config"
-	logger "github.com/overgoy/url-shortener/internal/logging"
+	"github.com/sirupsen/logrus"
 	"net/http"
-
-	"github.com/overgoy/url-shortener/internal/handler"
+	"time"
 )
 
-type BaseController struct {
-	logger     logger.Logger
-	cfg        *config.Configuration
-	urlHandler *handler.App // Добавляем экземпляр обработчика URL
+func RequestLogger(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		startTime := time.Now()
+		// Создаем запись для логирования ответа
+		ww := &responseWriter{ResponseWriter: w}
+
+		next.ServeHTTP(ww, r)
+
+		// Запись логов с использованием logrus
+		logger := logrus.WithFields(logrus.Fields{
+			"method":        r.Method,
+			"URI":           r.RequestURI,
+			"time_taken":    time.Since(startTime),
+			"response_code": ww.status,
+			"response_size": ww.size,
+		})
+		logger.Info("Received a request")
+	})
 }
 
-func NewBaseController(logger logger.Logger, cfg *config.Configuration) *BaseController {
-	return &BaseController{
-		logger:     logger,
-		cfg:        cfg,
-		urlHandler: handler.NewApp(cfg, logger), // Инициализируем обработчик с конфигурацией
+type responseWriter struct {
+	http.ResponseWriter
+	status int
+	size   int
+}
+
+func (rw *responseWriter) WriteHeader(status int) {
+	rw.status = status
+	rw.ResponseWriter.WriteHeader(status)
+}
+
+func (rw *responseWriter) Write(p []byte) (int, error) {
+	if rw.status == 0 {
+		rw.status = http.StatusOK
 	}
-}
-
-func (c *BaseController) Route() *chi.Mux {
-	r := chi.NewRouter()
-	r.Post("/", c.handleMain)
-	r.Get("/{id:[a-zA-Z0-9]+}", c.handleName)
-	return r
-}
-
-func (c *BaseController) handleMain(writer http.ResponseWriter, request *http.Request) {
-	c.urlHandler.HandlePost(writer, request) // Обращаемся к обработчику напрямую
-}
-
-func (c *BaseController) handleName(writer http.ResponseWriter, request *http.Request) {
-	c.urlHandler.HandleGet(writer, request) // Обращаемся к обработчику напрямую
+	n, err := rw.ResponseWriter.Write(p)
+	rw.size += n
+	return n, err
 }
