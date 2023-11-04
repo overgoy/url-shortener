@@ -3,19 +3,20 @@ package controller
 import (
 	"github.com/go-chi/chi/v5"
 	"github.com/overgoy/url-shortener/internal/config"
-	logger "github.com/overgoy/url-shortener/internal/logging"
+	"github.com/overgoy/url-shortener/internal/middleware"
+	"github.com/sirupsen/logrus"
 	"net/http"
 
 	"github.com/overgoy/url-shortener/internal/handler"
 )
 
 type BaseController struct {
-	logger     logger.Logger
+	logger     *logrus.Logger
 	cfg        *config.Configuration
 	urlHandler *handler.App // Добавляем экземпляр обработчика URL
 }
 
-func NewBaseController(logger logger.Logger, cfg *config.Configuration) *BaseController {
+func NewBaseController(logger *logrus.Logger, cfg *config.Configuration) *BaseController {
 	return &BaseController{
 		logger:     logger,
 		cfg:        cfg,
@@ -25,6 +26,7 @@ func NewBaseController(logger logger.Logger, cfg *config.Configuration) *BaseCon
 
 func (c *BaseController) Route() *chi.Mux {
 	r := chi.NewRouter()
+	r.Use(middleware.NewStructuredLogger(c.logger)) // Добавляем middleware для логирования
 	r.Post("/", c.handleMain)
 	r.Get("/{id:[a-zA-Z0-9]+}", c.handleName)
 	return r

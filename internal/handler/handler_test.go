@@ -3,7 +3,7 @@ package handler
 import (
 	"bytes"
 	"github.com/overgoy/url-shortener/internal/config"
-	logger "github.com/overgoy/url-shortener/internal/logging"
+	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"net/http"
@@ -16,8 +16,11 @@ func TestHandlePost(t *testing.T) {
 		ServerAddress: "localhost:8888",
 		BaseURL:       "http://localhost:8000/",
 	}
-	logAdapter := logger.NewLogrusAdapter()
-	h := NewApp(cfg, logAdapter)
+
+	logrusLogger := logrus.New()
+	logrusLogger.SetOutput(bytes.NewBufferString(""))
+
+	h := NewApp(cfg, logrusLogger)
 
 	type want struct {
 		code         int
@@ -30,7 +33,7 @@ func TestHandlePost(t *testing.T) {
 		inputURL string
 		want     want
 	}{
-		{"valid URL", "https://practicum.yandex.ru/", want{http.StatusCreated, "text/plain", cfg.BaseURL}}, // Теперь мы проверяем, что короткий URL начинается с BaseURL
+		{"valid URL", "https://practicum.yandex.ru/", want{http.StatusCreated, "text/plain", cfg.BaseURL}},
 		{"empty URL", "", want{http.StatusBadRequest, "", ""}},
 	}
 
@@ -58,8 +61,11 @@ func TestHandleGet(t *testing.T) {
 		ServerAddress: "localhost:8080",
 		BaseURL:       "http://localhost:8080/",
 	}
-	logAdapter := logger.NewLogrusAdapter()
-	h := NewApp(cfg, logAdapter)
+	// Создаем экземпляр logrus.Logger для использования в тестах
+	logrusLogger := logrus.New()
+	logrusLogger.SetOutput(bytes.NewBufferString(""))
+
+	h := NewApp(cfg, logrusLogger)
 
 	// Добавляем тестовую ссылку в хранилище
 	testID := "testID"
