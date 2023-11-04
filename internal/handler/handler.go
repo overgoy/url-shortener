@@ -4,49 +4,26 @@ import (
 	"fmt"
 	"github.com/overgoy/url-shortener/internal/config"
 	"github.com/overgoy/url-shortener/internal/util"
+	"github.com/sirupsen/logrus"
 	"io"
-	"log"
 	"net/http"
 	"net/url"
 	"strings"
 	"sync"
-	"time"
 )
-
-func Logger(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		startTime := time.Now()
-		// Создаем запись для логирования ответа
-		ww := &responseWriter{ResponseWriter: w}
-
-		next.ServeHTTP(ww, r)
-
-		// Запись логов с использованием log
-		log.Printf("%s %s %v", r.Method, r.URL, time.Since(startTime))
-	})
-}
-
-type responseWriter struct {
-	http.ResponseWriter
-	status int
-	size   int
-}
-
-func (rw *responseWriter) WriteHeader(status int) {
-	rw.status = status
-	rw.ResponseWriter.WriteHeader(status)
-}
 
 type App struct {
 	URLStore map[string]string
 	Mux      sync.Mutex
 	Config   *config.Configuration
+	Logger   *logrus.Logger
 }
 
-func NewApp(cfg *config.Configuration) *App {
+func NewApp(cfg *config.Configuration, logger *logrus.Logger) *App {
 	return &App{
 		URLStore: make(map[string]string),
 		Config:   cfg,
+		Logger:   logger,
 	}
 }
 
@@ -59,14 +36,14 @@ func (h *App) HandlePost(w http.ResponseWriter, r *http.Request) {
 	longURL, err := io.ReadAll(r.Body)
 	defer r.Body.Close()
 	if err != nil || len(strings.TrimSpace(string(longURL))) == 0 {
-		log.Println("Error reading request body")
+		h.Logger.Error("Error reading request body")
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte("Error reading request"))
 		return
 	}
 
 	if !isValidURL(string(longURL)) {
-		log.Println("Invalid URL format received")
+		h.Logger.Error("Invalid URL format received")
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte("Invalid URL format"))
 		return
@@ -87,8 +64,11 @@ func (h *App) HandlePost(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *App) HandleGet(w http.ResponseWriter, r *http.Request) {
+	logger := h.Logger
+
 	if len(r.URL.Path) < 2 {
 		http.Error(w, "Invalid request", http.StatusBadRequest)
+		logger.Error("Invalid request")
 		return
 	}
 
@@ -99,7 +79,7 @@ func (h *App) HandleGet(w http.ResponseWriter, r *http.Request) {
 	h.Mux.Unlock()
 
 	if !ok {
-		log.Printf("URL not found for id: %s\n", id)
+		logger.WithField("id", id).Error("URL not found")
 		http.Error(w, "Not found", http.StatusNotFound)
 		return
 	}

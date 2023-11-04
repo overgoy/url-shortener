@@ -3,21 +3,28 @@ package server
 import (
 	"fmt"
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 	"github.com/overgoy/url-shortener/internal/config"
 	"github.com/overgoy/url-shortener/internal/controller"
-	"github.com/overgoy/url-shortener/internal/handler" // импортирование пакета handler
-	"log"                                               // использование стандартного логгера
+	"github.com/sirupsen/logrus"
 	"net/http"
 	"os"
 )
 
 func Start(cfg *config.Configuration) {
-	baseController := controller.NewBaseController(cfg)
+	logger := logrus.New()
+	logger.SetOutput(os.Stdout)
+	logger.SetLevel(logrus.InfoLevel)
+
+	baseController := controller.NewBaseController(logger, cfg)
+
 	r := chi.NewRouter()
-	r.Use(handler.RequestLogger) // использование RequestLogger middleware
+	r.Use(middleware.Logger)
+	r.Use(middleware.Recoverer)
+
 	r.Mount("/", baseController.Route())
 
-	log.Printf("Server started on %s", cfg.ServerAddress)
+	logger.Info("Server started on " + cfg.ServerAddress)
 	err := http.ListenAndServe(cfg.ServerAddress, r)
 	if err != nil {
 		fmt.Printf("server: %v", err)
