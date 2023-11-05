@@ -153,3 +153,49 @@ func TestShortenEndpoint(t *testing.T) {
 		})
 	}
 }
+
+func TestGzipMiddleware(t *testing.T) {
+	cfg := &config.Configuration{
+		ServerAddress: "localhost:8888",
+		BaseURL:       "http://localhost:8000/",
+	}
+
+	logger, _ := zap.NewProduction()
+	defer logger.Sync()
+
+	h := NewApp(cfg, logger)
+
+	type want struct {
+		code         int
+		contentType  string
+		bodyContains string
+	}
+
+	tests := []struct {
+		name     string
+		inputURL string
+		want     want
+	}{
+		{"valid URL", "https://practicum.yandex.ru/", want{http.StatusCreated, "text/plain", cfg.BaseURL}},
+		{"empty URL", "", want{http.StatusBadRequest, "", ""}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req, err := http.NewRequest("POST", "/", bytes.NewBufferString(tt.inputURL))
+			require.NoError(t, err)
+			req.Header.Set("Content-Type", "text/plain")
+			req.Header.Set("Accept-Encoding", "gzip") // Устанавливаем заголовок Accept-Encoding
+
+			rec := httptest.NewRecorder()
+
+			h.HandlePost(rec, req)
+
+			res := rec.Result()
+			defer res.Body.Close()
+
+			assert.Equal(t, tt.want.code, res.StatusCode)
+			assert.Equal(t, tt.want.contentType, res.Header.Get("Content-Type"))
+		})
+	}
+}
