@@ -1,12 +1,12 @@
-package middleware
+package logger
 
 import (
-	"github.com/sirupsen/logrus"
+	"go.uber.org/zap"
 	"net/http"
 	"time"
 )
 
-func NewStructuredLogger(logger *logrus.Logger) func(next http.Handler) http.Handler {
+func NewStructuredLogger(logger *zap.Logger) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
 			startTime := time.Now()
@@ -18,8 +18,17 @@ func NewStructuredLogger(logger *logrus.Logger) func(next http.Handler) http.Han
 			endTime := time.Now()
 			elapsed := endTime.Sub(startTime)
 
-			logger.Infof("Request: %s %s (%s) completed in %s", r.Method, r.URL.Path, r.RemoteAddr, elapsed)
-			logger.Infof("Response: %d %s, Size: %d bytes", lrw.statusCode, http.StatusText(lrw.statusCode), lrw.size)
+			logger.Info("Request completed",
+				zap.String("method", r.Method),
+				zap.String("path", r.URL.Path),
+				zap.String("remote_addr", r.RemoteAddr),
+				zap.Duration("elapsed_time", elapsed),
+			)
+			logger.Info("Response",
+				zap.Int("status_code", lrw.statusCode),
+				zap.String("status_text", http.StatusText(lrw.statusCode)),
+				zap.Int("size", lrw.size),
+			)
 		}
 		return http.HandlerFunc(fn)
 	}

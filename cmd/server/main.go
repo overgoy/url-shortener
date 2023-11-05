@@ -6,15 +6,18 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/overgoy/url-shortener/internal/config"
 	"github.com/overgoy/url-shortener/internal/controller"
-	"github.com/sirupsen/logrus"
+	"go.uber.org/zap"
 	"net/http"
 	"os"
 )
 
 func Start(cfg *config.Configuration) {
-	logger := logrus.New()
-	logger.SetOutput(os.Stdout)
-	logger.SetLevel(logrus.InfoLevel)
+	logger, err := zap.NewProduction()
+	if err != nil {
+		fmt.Printf("Failed to create logger: %v\n", err)
+		os.Exit(1)
+	}
+	defer logger.Sync()
 
 	baseController := controller.NewBaseController(logger, cfg)
 
@@ -25,9 +28,9 @@ func Start(cfg *config.Configuration) {
 	r.Mount("/", baseController.Route())
 
 	logger.Info("Server started on " + cfg.ServerAddress)
-	err := http.ListenAndServe(cfg.ServerAddress, r)
+	err = http.ListenAndServe(cfg.ServerAddress, r)
 	if err != nil {
-		fmt.Printf("server: %v", err)
+		logger.Error("Failed to start the server", zap.Error(err))
 		os.Exit(1)
 	}
 }
