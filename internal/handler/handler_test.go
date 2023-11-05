@@ -124,7 +124,7 @@ func TestShortenEndpoint(t *testing.T) {
 		inputURL string
 		want     want
 	}{
-		{"valid URL", "https://practicum.yandex.ru/", want{http.StatusOK, "application/json", "http://localhost:8000/"}},
+		{"valid URL", "https://practicum.yandex.ru/", want{http.StatusCreated, "application/json", "http://localhost:8000/"}},
 		{"empty URL", "", want{http.StatusBadRequest, "", ""}},
 	}
 
