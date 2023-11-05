@@ -156,8 +156,8 @@ func TestShortenEndpoint(t *testing.T) {
 
 func TestGzipMiddleware(t *testing.T) {
 	cfg := &config.Configuration{
-		ServerAddress: "localhost:8888",
-		BaseURL:       "http://localhost:8000/",
+		ServerAddress: "localhost:8080",
+		BaseURL:       "http://localhost:8080/",
 	}
 
 	logger, _ := zap.NewProduction()
@@ -185,7 +185,9 @@ func TestGzipMiddleware(t *testing.T) {
 			req, err := http.NewRequest("POST", "/", bytes.NewBufferString(tt.inputURL))
 			require.NoError(t, err)
 			req.Header.Set("Content-Type", "text/plain")
-			req.Header.Set("Accept-Encoding", "gzip") // Устанавливаем заголовок Accept-Encoding
+
+			// Устанавливаем заголовок Accept-Encoding, чтобы указать поддержку сжатия
+			req.Header.Set("Accept-Encoding", "gzip")
 
 			rec := httptest.NewRecorder()
 
