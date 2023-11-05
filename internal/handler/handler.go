@@ -86,6 +86,10 @@ func (h *App) HandlePost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	shortURL, err := h.generateShortURL(string(longURL))
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 
 	w.Header().Set("Content-Type", "text/plain")
 	w.WriteHeader(http.StatusCreated)
