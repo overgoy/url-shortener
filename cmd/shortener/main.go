@@ -7,5 +7,6 @@ import (
 
 func main() {
 	cfg := config.New()
+
 	server.Start(cfg)
 }
