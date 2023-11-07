@@ -22,11 +22,75 @@ type App struct {
 }
 
 func NewApp(cfg *config.Configuration, logger *zap.Logger) *App {
-	return &App{
+	app := &App{
 		URLStore: make(map[string]string),
 		Config:   cfg,
 		Logger:   logger,
 	}
+
+	if err := app.LoadURLsFromFile(); err != nil {
+		logger.Error("Error loading URLs from file", zap.Error(err))
+	}
+
+	return app
+}
+
+func (h *App) LoadURLsFromFile() error {
+	if h.Config.FileStoragePath == "" {
+		return nil
+	}
+
+	consumer, err := util.NewConsumer(h.Config.FileStoragePath)
+	if err != nil {
+		return err
+	}
+	defer consumer.Close()
+
+	h.Mux.Lock()
+	defer h.Mux.Unlock()
+
+	h.URLStore = make(map[string]string)
+
+	for {
+		var urlData util.URLData
+		err := consumer.Read(&urlData)
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return err
+		}
+
+		h.URLStore[urlData.UUID] = urlData.OriginalURL
+	}
+
+	return nil
+}
+
+func (h *App) saveURLToDisk(originalURL, shortURL string) error {
+	if h.Config.FileStoragePath == "" {
+		return nil
+	}
+
+	producer, err := util.NewProducer(h.Config.FileStoragePath)
+	if err != nil {
+		return err
+	}
+	defer producer.Close()
+
+	h.Mux.Lock()
+	defer h.Mux.Unlock()
+
+	id := util.GenerateID()
+	h.URLStore[id] = originalURL
+
+	urlData := util.URLData{
+		UUID:        id,
+		ShortURL:    shortURL,
+		OriginalURL: originalURL,
+	}
+
+	return producer.Write(&urlData)
 }
 
 func (h *App) ShortenEndpoint(w http.ResponseWriter, r *http.Request) {
@@ -57,6 +121,8 @@ func (h *App) ShortenEndpoint(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+
+	h.saveURLToDisk(request.URL, shortURL)
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
@@ -90,6 +156,8 @@ func (h *App) HandlePost(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+
+	h.saveURLToDisk(string(longURL), shortURL)
 
 	w.Header().Set("Content-Type", "text/plain")
 	w.WriteHeader(http.StatusCreated)

@@ -7,8 +7,9 @@ import (
 )
 
 type Configuration struct {
-	ServerAddress string `env:"SERVER_ADDRESS"`
-	BaseURL       string `env:"BASE_URL"`
+	ServerAddress   string `env:"SERVER_ADDRESS"`
+	BaseURL         string `env:"BASE_URL"`
+	FileStoragePath string `env:"FILE_STORAGE_PATH"`
 }
 
 func New() *Configuration {
@@ -17,10 +18,13 @@ func New() *Configuration {
 	// Значения по умолчанию
 	defaultAddr := "localhost:8080"
 	defaultBaseURL := "http://localhost:8080/"
+	defaultFileStoragePath := "/tmp/short-url-db.json"
 
 	// Регистрация флагов
 	addrFlag := flag.String("a", defaultAddr, "Address for the HTTP server to run on")
 	baseURLFlag := flag.String("b", defaultBaseURL, "Base URL for the resulting shortened URL")
+	fileStoragePathFlag := flag.String("f", defaultFileStoragePath, "Path to the file where URL data will be stored")
+
 	//// Регистрация флагов
 	//flag.StringVar(&config.ServerAddress, "a", defaultAddr, "Address for the HTTP server to run on")
 	//flag.StringVar(&config.BaseURL, "b", defaultBaseURL, "Base URL for the resulting shortened URL")
@@ -38,6 +42,9 @@ func New() *Configuration {
 	}
 	if config.BaseURL == "" {
 		config.BaseURL = *baseURLFlag
+	}
+	if config.FileStoragePath == "" {
+		config.FileStoragePath = *fileStoragePathFlag
 	}
 
 	log.WithFields(log.Fields{
