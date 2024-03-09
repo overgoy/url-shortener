@@ -1,53 +1,75 @@
-package logger
+package logging
 
 import (
-	log "github.com/sirupsen/logrus"
-	"io"
+	"go.uber.org/zap"
+	"net/http"
+	"time"
 )
 
 type Logger interface {
-	Info(args ...interface{})
-	Error(args ...interface{})
-	WithError(err error) Logger
-	WithField(key string, value interface{}) Logger
-	SetOutput(output io.Writer)
-	SetLevel(level log.Level)
+	Error(msg string, fields ...zap.Field)
+	Info(msg string, fields ...zap.Field)
 }
 
-type LogrusAdapter struct {
-	logger *log.Logger
+type MyLogger struct {
+	*zap.Logger
 }
 
-func NewLogrusAdapter() Logger {
-	return &LogrusAdapter{
-		logger: log.StandardLogger(),
+func NewMyLogger() (*MyLogger, error) {
+	zapLogger, err := zap.NewProduction()
+	if err != nil {
+		return nil, err
+	}
+	defer zapLogger.Sync()
+
+	return &MyLogger{Logger: zapLogger}, nil
+}
+
+func NewStructuredLogger(logger Logger) func(next http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		fn := func(w http.ResponseWriter, r *http.Request) {
+			startTime := time.Now()
+
+			lrw := newLoggingResponseWriter(w)
+
+			next.ServeHTTP(lrw, r)
+
+			endTime := time.Now()
+			elapsed := endTime.Sub(startTime)
+
+			logger.Info("Request completed",
+				zap.String("method", r.Method),
+				zap.String("path", r.URL.Path),
+				zap.String("remote_addr", r.RemoteAddr),
+				zap.Duration("elapsed_time", elapsed),
+			)
+			logger.Info("Response",
+				zap.Int("status_code", lrw.statusCode),
+				zap.String("status_text", http.StatusText(lrw.statusCode)),
+				zap.Int("size", lrw.size),
+			)
+		}
+		return http.HandlerFunc(fn)
 	}
 }
 
-func (l *LogrusAdapter) Info(args ...interface{}) {
-	l.logger.Info(args...)
+type loggingResponseWriter struct {
+	http.ResponseWriter
+	statusCode int
+	size       int
 }
 
-func (l *LogrusAdapter) Error(args ...interface{}) {
-	l.logger.Error(args...)
+func newLoggingResponseWriter(w http.ResponseWriter) *loggingResponseWriter {
+	return &loggingResponseWriter{w, http.StatusOK, 0}
 }
 
-func (l *LogrusAdapter) WithError(err error) Logger {
-	return &LogrusAdapter{
-		logger: l.logger.WithError(err).Logger,
-	}
+func (lrw *loggingResponseWriter) WriteHeader(code int) {
+	lrw.statusCode = code
+	lrw.ResponseWriter.WriteHeader(code)
 }
 
-func (l *LogrusAdapter) WithField(key string, value interface{}) Logger {
-	return &LogrusAdapter{
-		logger: l.logger.WithField(key, value).Logger,
-	}
-}
-
-func (l *LogrusAdapter) SetOutput(output io.Writer) {
-	l.logger.SetOutput(output)
-}
-
-func (l *LogrusAdapter) SetLevel(level log.Level) {
-	l.logger.SetLevel(level)
+func (lrw *loggingResponseWriter) Write(b []byte) (int, error) {
+	size, err := lrw.ResponseWriter.Write(b)
+	lrw.size += size
+	return size, err
 }
