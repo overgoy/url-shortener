@@ -25,10 +25,6 @@ func New() *Configuration {
 	baseURLFlag := flag.String("b", defaultBaseURL, "Base URL for the resulting shortened URL")
 	fileStoragePathFlag := flag.String("f", defaultFileStoragePath, "Path to the file where URL data will be stored")
 
-	//// Регистрация флагов
-	//flag.StringVar(&config.ServerAddress, "a", defaultAddr, "Address for the HTTP server to run on")
-	//flag.StringVar(&config.BaseURL, "b", defaultBaseURL, "Base URL for the resulting shortened URL")
-
 	// Анализировать переданные аргументы командной строки
 	flag.Parse()
 

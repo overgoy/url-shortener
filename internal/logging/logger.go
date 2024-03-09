@@ -1,4 +1,4 @@
-package logger
+package logging
 
 import (
 	"go.uber.org/zap"
@@ -6,7 +6,26 @@ import (
 	"time"
 )
 
-func NewStructuredLogger(logger *zap.Logger) func(next http.Handler) http.Handler {
+type Logger interface {
+	Error(msg string, fields ...zap.Field)
+	Info(msg string, fields ...zap.Field)
+}
+
+type MyLogger struct {
+	*zap.Logger
+}
+
+func NewMyLogger() (*MyLogger, error) {
+	zapLogger, err := zap.NewProduction()
+	if err != nil {
+		return nil, err
+	}
+	defer zapLogger.Sync()
+
+	return &MyLogger{Logger: zapLogger}, nil
+}
+
+func NewStructuredLogger(logger Logger) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
 			startTime := time.Now()

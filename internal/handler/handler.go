@@ -2,113 +2,47 @@ package handler
 
 import (
 	"encoding/json"
-	"fmt"
-	"github.com/overgoy/url-shortener/internal/config"
+	"github.com/overgoy/url-shortener/internal/logging"
 	"github.com/overgoy/url-shortener/internal/models"
-	"github.com/overgoy/url-shortener/internal/util"
+	"github.com/overgoy/url-shortener/internal/storage"
 	"go.uber.org/zap"
 	"io"
 	"net/http"
 	"net/url"
 	"strings"
-	"sync"
 )
 
-type App struct {
-	URLStore map[string]string
-	Mux      sync.Mutex
-	Config   *config.Configuration
-	Logger   *zap.Logger
+// Handler представляет собой HTTP-обработчик для сокращения URL
+type Handler struct {
+	Logger     logging.Logger
+	URLStorage storage.URLStorage
 }
 
-func NewApp(cfg *config.Configuration, logger *zap.Logger) *App {
-	app := &App{
-		URLStore: make(map[string]string),
-		Config:   cfg,
-		Logger:   logger,
+// NewHandler создает новый экземпляр Handler с переданным логгером и хранилищем URL
+func NewHandler(logger logging.Logger, urlStorage storage.URLStorage) *Handler {
+	return &Handler{
+		Logger:     logger,
+		URLStorage: urlStorage,
 	}
-
-	if err := app.LoadURLsFromFile(); err != nil {
-		logger.Error("Error loading URLs from file", zap.Error(err))
-	}
-
-	return app
 }
 
-func (h *App) LoadURLsFromFile() error {
-	if h.Config.FileStoragePath == "" {
-		return nil
-	}
-
-	consumer, err := util.NewConsumer(h.Config.FileStoragePath)
-	if err != nil {
-		return err
-	}
-	defer consumer.Close()
-
-	h.Mux.Lock()
-	defer h.Mux.Unlock()
-
-	h.URLStore = make(map[string]string)
-
-	for {
-		var urlData util.URLData
-		err := consumer.Read(&urlData)
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			return err
-		}
-
-		h.URLStore[urlData.UUID] = urlData.OriginalURL
-	}
-
-	return nil
-}
-
-func (h *App) saveURLToDisk(originalURL, shortURL string) error {
-	if h.Config.FileStoragePath == "" {
-		return nil
-	}
-
-	producer, err := util.NewProducer(h.Config.FileStoragePath)
-	if err != nil {
-		return err
-	}
-	defer producer.Close()
-
-	h.Mux.Lock()
-	defer h.Mux.Unlock()
-
-	id := util.GenerateID()
-	h.URLStore[id] = originalURL
-
-	urlData := util.URLData{
-		UUID:        id,
-		ShortURL:    shortURL,
-		OriginalURL: originalURL,
-	}
-
-	return producer.Write(&urlData)
-}
-
-func (h *App) ShortenEndpoint(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) ShortenEndpoint(w http.ResponseWriter, r *http.Request) {
 	// Парсим JSON-запрос в структуру ShortenRequest
 	var request models.ShortenRequest
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
+		h.Logger.Error("Error decoding JSON request", zap.Error(err))
 		return
 	}
 
 	if !isValidURL(request.URL) {
-		h.Logger.Error("Invalid URL format received")
+		h.Logger.Info(`Invalid URL format received`, zap.String("url", request.URL))
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte("Invalid URL format"))
 		return
 	}
 
-	shortURL, err := h.generateShortURL(request.URL)
+	shortURL, err := h.URLStorage.GenerateShortURL(request.URL)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -122,14 +56,19 @@ func (h *App) ShortenEndpoint(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h.saveURLToDisk(request.URL, shortURL)
+	h.URLStorage.SaveURLToDisk(request.URL, shortURL)
 
-	w.Header().Set("Content-Type", "application/json")
+	// Получаем объект http.Header из запроса
+	header := w.Header()
+	// Устанавливаем значение заголовка Content-Type
+	header.Set("Content-Type", "application/json")
+	// Устанавливаем статус ответа
 	w.WriteHeader(http.StatusCreated)
+	// Пишем ответ в теле
 	w.Write(jsonResponse)
 }
 
-func (h *App) HandlePost(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) HandlePost(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path != "/" {
 		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 		return
@@ -151,58 +90,56 @@ func (h *App) HandlePost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	shortURL, err := h.generateShortURL(string(longURL))
+	shortURL, err := h.URLStorage.GenerateShortURL(string(longURL))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	h.saveURLToDisk(string(longURL), shortURL)
+	h.URLStorage.SaveURLToDisk(string(longURL), shortURL)
 
-	w.Header().Set("Content-Type", "text/plain")
+	// Получаем объект http.Header из запроса
+	header := w.Header()
+	// Устанавливаем значение заголовка Content-Type
+	header.Set("Content-Type", "text/plain")
+	// Устанавливаем статус ответа
 	w.WriteHeader(http.StatusCreated)
+	// Пишем ответ в теле
 	w.Write([]byte(shortURL))
 }
 
-func (h *App) HandleGet(w http.ResponseWriter, r *http.Request) {
-	logger := h.Logger
+func (h *Handler) HandleGet(w http.ResponseWriter, r *http.Request) {
 
 	if len(r.URL.Path) < 2 {
 		http.Error(w, "Invalid request", http.StatusBadRequest)
-		logger.Error("Invalid request")
+		h.Logger.Error("Invalid request")
 		return
 	}
 
 	id := r.URL.Path[1:]
 
-	h.Mux.Lock()
-	longURL, ok := h.URLStore[id]
-	h.Mux.Unlock()
+	// Загрузка URL из файла
+	data, err := h.URLStorage.LoadURLsFromFile()
+	if err != nil {
+		h.Logger.Error("Error loading URLs from file", zap.Error(err))
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
 
+	longURL, ok := data[id]
 	if !ok {
 		h.Logger.Error("URL not found", zap.String("id", id))
 		http.Error(w, "Not found", http.StatusNotFound)
 		return
 	}
 
-	w.Header().Set("Location", longURL)
+	// Получаем объект http.Header из запроса
+	header := w.Header()
+	header.Set("Location", longURL)
 	w.WriteHeader(http.StatusTemporaryRedirect)
 }
 
-func (h *App) generateShortURL(longURL string) (string, error) {
-	id := util.GenerateID()
-	h.Mux.Lock()
-	defer h.Mux.Unlock()
-	h.URLStore[id] = longURL
-
-	baseURL := h.Config.BaseURL
-	baseURL = strings.TrimSuffix(baseURL, "/")
-
-	shortURL := fmt.Sprintf("%s/%s", baseURL, id)
-	return shortURL, nil
-}
-
 func isValidURL(u string) bool {
-	parsedURL, err := url.Parse(u)
+	parsedURL, err := url.ParseRequestURI(u)
 	return err == nil && parsedURL.Scheme != "" && parsedURL.Host != ""
 }
